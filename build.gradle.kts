@@ -3,6 +3,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 plugins {
     java
     kotlin("jvm") version "1.3.0"
+    "kotlin-kapt"
 }
 
 group = "net.jxpress"
@@ -14,11 +15,11 @@ repositories {
 }
 
 dependencies {
-    compile(kotlin("stdlib-jdk8"))
-    compile("com.github.kittinunf.fuel", "fuel", "1.16.0")
-    compile("com.github.kittinunf.fuel", "fuel-moshi", "1.16.0")
-    compile("com.squareup.moshi", "moshi-kotlin", "1.7.0")
-    testCompile("junit", "junit", "4.12")
+    implementation(kotlin("stdlib-jdk8"))
+    implementation("com.github.kittinunf.fuel", "fuel", "1.16.0")
+    implementation("com.github.kittinunf.fuel", "fuel-moshi", "1.16.0")
+    implementation("com.squareup.moshi", "moshi-kotlin", "1.7.0")
+    testImplementation("junit", "junit", "4.12")
 }
 
 configure<JavaPluginConvention> {
