@@ -18,7 +18,7 @@ val DAY_MILLIS = 1000 * 60 * 60 * 24
 fun initializeProperty(): Property {
     return Property(System.getenv(Env.HOST),
             System.getenv(Env.GITLAB_TOKEN),
-            System.getenv(Env.SLACK_TOKEN),
+            System.getenv(Env.SLACK_WEB_HOOK_URL),
             System.getenv(Env.PROJECT_ID).toInt(),
             System.getenv(Env.LIMIT).toInt())
 }
@@ -38,7 +38,7 @@ fun main(args: Array<String>) {
 fun assertionSystemEnv() {
     requireNotNull(System.getenv(Env.HOST)) { "GitLabのホストを ${Env.HOST} に設定してください。" }
     requireNotNull(System.getenv(Env.GITLAB_TOKEN)) { "GitLabのトークンを ${Env.GITLAB_TOKEN} に設定してください。" }
-    requireNotNull(System.getenv(Env.SLACK_TOKEN)) { "Slackのトークンを ${Env.SLACK_TOKEN} に設定してください。" }
+    requireNotNull(System.getenv(Env.SLACK_WEB_HOOK_URL)) { "SlackのWebHook URLを ${Env.SLACK_WEB_HOOK_URL} に設定してください。" }
     requireNotNull(System.getenv(Env.PROJECT_ID)) { "プロジェクトのIDを ${Env.PROJECT_ID} に設定してください。" }
     requireNotNull(System.getenv(Env.LIMIT)) { "リマインドを促し始める日数を ${Env.LIMIT} に設定してください。" }
     require(System.getenv(Env.PROJECT_ID).toIntOrNull() != null) { "${Env.PROJECT_ID} には数字を設定してください。" }
@@ -90,10 +90,10 @@ fun postToSlack(remindIssues: RemindIssues) {
     // TODO: 0件だった場合ハッピーな文言を送る
     // TODO: エラーハンドリング
     createOverdueMessage(remindIssues.overdueIssues)?.let {
-        Fuel.post(property.slackToken).body(adapter.toJson(it)).response()
+        Fuel.post(property.slackWebHookUrl).body(adapter.toJson(it)).response()
     }
     createUpcomingMessage(remindIssues.upcomingIssues)?.let {
-        Fuel.post(property.slackToken).body(adapter.toJson(it)).response()
+        Fuel.post(property.slackWebHookUrl).body(adapter.toJson(it)).response()
     }
 }
 
