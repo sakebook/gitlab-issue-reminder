@@ -12,6 +12,7 @@ val listType = Types.newParameterizedType(List::class.java, Issue::class.java)
 val adapter: JsonAdapter<List<Issue>> = moshi.adapter(listType)
 val property: Property by lazy { initializeProperty() }
 val FETCH_COUNT = 100
+val DAY_MILLIS = 1000 * 60 * 60 * 24
 
 fun initializeProperty(): Property {
     return Property(System.getenv(Env.HOST),
@@ -27,6 +28,7 @@ fun main(args: Array<String>) {
     // TODO: Coroutineに置き換え
     fetch {
         println("All issue size: ${it.size}")
+        val remindIssues = calculateRemindIssues(it)
     }
 }
 
@@ -45,7 +47,10 @@ fun fetch(issueList: ArrayList<Issue> = arrayListOf(), page: Int = 1, callback: 
             .header("PRIVATE-TOKEN" to property.token)
             .responseString()
     result.fold({ json ->
-        val issues = adapter.fromJson(json)?: return System.exit(1)
+        val issues = adapter.fromJson(json)?: run {
+            println("Failed deserialized Issue from JSON.")
+            return System.exit(1)
+        }
         issueList.addAll(issues)
         when (issues.size < FETCH_COUNT) {
             true -> callback(issueList)
@@ -55,4 +60,14 @@ fun fetch(issueList: ArrayList<Issue> = arrayListOf(), page: Int = 1, callback: 
         println(it.localizedMessage)
         return System.exit(1)
     })
+}
+
+fun calculateRemindIssues(issueList: ArrayList<Issue>): RemindIssues {
+    val time = Date().time
+    return issueList
+            .filter { it.dueDate != null } // due dateが設定されていないものは除外
+            .sortedByDescending { it.dueDate } // 時系列にソート
+            .filter { (time - it.dueDate!!.time) / DAY_MILLIS > property.limit } // 締切が遠いものは除外
+            .partition { (time - it.dueDate!!.time) / DAY_MILLIS < 0 } // 締切を過ぎているものと分ける
+            .run { RemindIssues(this.first, this.second) }
 }
