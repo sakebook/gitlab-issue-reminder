@@ -1,3 +1,4 @@
+import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.FuelManager
 import com.github.kittinunf.fuel.httpGet
 import com.squareup.moshi.JsonAdapter
@@ -70,10 +71,70 @@ fun calculateRemindIssues(issueList: ArrayList<Issue>): RemindIssues {
     return issueList
             .filter { it.dueDate != null } // due dateが設定されていないものは除外
             .sortedByDescending { it.dueDate } // 時系列にソート
-            .filter { (time - it.dueDate!!.time) / DAY_MILLIS > property.limit } // 締切が遠いものは除外
-            .partition { (time - it.dueDate!!.time) / DAY_MILLIS < 0 } // 締切を過ぎているものと分ける
+            .filter { (it.dueDate!!.time - time) / DAY_MILLIS < property.limit } // 締切が遠いものは除外
+            .partition { (time - it.dueDate!!.time) > 0 } // 締切を過ぎているものと分ける
             .run { RemindIssues(this.first, this.second) }
 }
 
 fun postToSlack(remindIssues: RemindIssues) {
+    val moshi = Moshi.Builder()
+            .add(MessageJsonAdapter.FACTORY)
+            .add(ListAttachmentJsonAdapter.FACTORY)
+            .add(AttachmentJsonAdapter.FACTORY)
+            .build()
+
+    val listType = Types.newParameterizedType(Message::class.java)
+    val adapter: JsonAdapter<Message> = moshi.adapter(listType)
+
+    // TODO: 処理が重複してるのでまとめる
+    // TODO: 0件だった場合ハッピーな文言を送る
+    // TODO: エラーハンドリング
+    createOverdueMessage(remindIssues.overdueIssues)?.let {
+        Fuel.post(property.slackToken).body(adapter.toJson(it)).response()
+    }
+    createUpcomingMessage(remindIssues.upcomingIssues)?.let {
+        Fuel.post(property.slackToken).body(adapter.toJson(it)).response()
+    }
+}
+
+fun createUpcomingMessage(issueList: List<Issue>): Message? {
+    val message = Message()
+    message.text = "締切が${property.limit}日以内のIssue"
+    message.attachments = arrayListOf()
+    issueList.ifEmpty { return null }
+            .forEach {
+                val attachment = Attachment()
+                attachment.title = it.title
+                attachment.title_link = it.webUrl
+                attachment.footer = it.labels.flat()
+                attachment.text = "<@${it.author?.username}>"
+                attachment.color = "warning"
+                attachment.ts = (it.dueDate?.time?.div(1000))?.toInt() ?: 0
+                message.attachments!!.add(attachment)
+            }
+    return message
+}
+
+fun createOverdueMessage(issueList: List<Issue>): Message? {
+    val message = Message()
+    message.text = "締切を過ぎてるIssue"
+    message.attachments = arrayListOf()
+    issueList.ifEmpty { return null }
+            .forEach {
+                val attachment = Attachment()
+                attachment.title = it.title
+                attachment.title_link = it.webUrl
+                attachment.footer = it.labels.flat()
+                attachment.text = "<@${it.author?.username}>"
+                attachment.color = "danger"
+                attachment.ts = (it.dueDate?.time?.div(1000))?.toInt() ?: 0
+                message.attachments!!.add(attachment)
+            }
+    return message
+}
+
+fun List<String>.flat(): String {
+    return this
+            .ifEmpty { listOf("") }
+            .reduce { acc, s -> "$acc, $s" }
 }
