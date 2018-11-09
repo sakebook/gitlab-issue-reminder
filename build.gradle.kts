@@ -4,9 +4,10 @@ plugins {
     java
     kotlin("jvm") version "1.3.0"
     "kotlin-kapt"
+    id("com.google.cloud.tools.jib") version "0.9.13"
 }
 
-group = "net.jxpress"
+group = "com.github.sakebook"
 version = "0.0.1"
 
 repositories {
@@ -27,4 +28,10 @@ configure<JavaPluginConvention> {
 }
 tasks.withType<KotlinCompile> {
     kotlinOptions.jvmTarget = "1.8"
+}
+
+jib {
+    container {
+        jvmFlags = listOf("-Dfile.encoding=UTF-8") // for JP
+    }
 }
